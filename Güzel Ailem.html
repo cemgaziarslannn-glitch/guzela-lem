@@ -98,7 +98,6 @@
     margin-bottom: 3px;
   }
 
-  /* Mesaj yazıyor göstergesi */
   #typingIndicator {
     font-size: 13px;
     color: white;
@@ -163,10 +162,11 @@
   <button id="sendBtn">➤</button>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+<!-- Firebase klasik script yükleme -->
+<script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js"></script>
 
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyBX0PUaisTG-TvIOCCtKzSiI3e7yhLu3ik",
   authDomain: "guzelailemchat.firebaseapp.com",
@@ -178,8 +178,8 @@ const firebaseConfig = {
   measurementId: "G-3CH1J0DLGZ"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 const profileSetupDiv = document.getElementById('profileSetup');
 const profileNameInput = document.getElementById('profileNameInput');
@@ -197,9 +197,9 @@ let userColor, userAvatar="😃", username, userID, typingTimeout;
 
 if(localStorage.getItem('chatUserID')){
   userID = localStorage.getItem('chatUserID');
-  get(child(ref(db), `users/${userID}`)).then(snapshot=>{
-    if(snapshot.exists()){
-      const data = snapshot.val();
+  db.ref('users/' + userID).once('value').then(snapshot=>{
+    const data = snapshot.val();
+    if(data){
       username = data.username;
       userAvatar = data.avatar || "😃";
       userColor = data.color || colors[Math.floor(Math.random()*colors.length)];
@@ -225,10 +225,10 @@ avatarButtons.forEach(btn=>{
 
 saveProfileBtn.addEventListener('click', ()=>{
   username = profileNameInput.value.trim() || "Üye" + Math.floor(Math.random()*1000);
-  const newUserRef = push(ref(db, 'users'));
+  const newUserRef = db.ref('users').push();
   userID = newUserRef.key;
   localStorage.setItem('chatUserID', userID);
-  set(ref(db, `users/${userID}`), { username, avatar: userAvatar, color: userColor });
+  newUserRef.set({ username, avatar: userAvatar, color: userColor });
   startChat();
 });
 
@@ -237,24 +237,21 @@ function startChat(){
   chatContainer.style.display = "flex";
   messageInputDiv.style.display = "flex";
 
-  // Yazıyor göstergesi
   messageInput.addEventListener('input', ()=>{
-    set(ref(db, `typing/${userID}`), username + ' yazıyor...');
+    db.ref('typing/' + userID).set(username + ' yazıyor...');
     clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(()=>{ set(ref(db, `typing/${userID}`), ''); }, 1500);
+    typingTimeout = setTimeout(()=>{ db.ref('typing/' + userID).set(''); }, 1500);
   });
 
   sendBtn.addEventListener('click', sendMessage);
   messageInput.addEventListener('keypress', (e)=>{ if(e.key==='Enter') sendMessage(); });
 
-  onChildAdded(ref(db, 'messages'), (snapshot)=>{
+  db.ref('messages').on('child_added', snapshot=>{
     const msg = snapshot.val();
     renderMessage(msg);
   });
 
-  // Diğer kullanıcılar yazıyor göstergesi
-  const typingRef = ref(db, 'typing');
-  onValue(typingRef, (snapshot)=>{
+  db.ref('typing').on('value', snapshot=>{
     const data = snapshot.val() || {};
     let displayText = '';
     for(const key in data){
@@ -270,9 +267,9 @@ function startChat(){
 function sendMessage(){
   const text = messageInput.value.trim();
   if(text){
-    push(ref(db, 'messages'), { user: username, text, color: userColor, avatar: userAvatar, uid: userID, timestamp: Date.now() });
+    db.ref('messages').push({ user: username, text, color: userColor, avatar: userAvatar, uid: userID, timestamp: Date.now() });
     messageInput.value='';
-    set(ref(db, `typing/${userID}`), '');
+    db.ref('typing/' + userID).set('');
   }
 }
 
