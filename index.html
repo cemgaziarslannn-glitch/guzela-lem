@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Güzel Ailem Chat | Giriş</title>
+  <style>
+    /* Basit stil, isteğe göre geliştirilebilir */
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #a8edea, #fed6e3);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      width: 350px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #ff6f91;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #d8516f;
+    }
+    #message {
+      margin-top: 15px;
+      min-height: 20px;
+      color: red;
+      font-weight: 600;
+    }
+    .switch-link {
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    .switch-link a {
+      color: #ff6f91;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .switch-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Giriş Yap</h2>
+    <input type="text" id="username" placeholder="Kullanıcı Adı" />
+    <input type="password" id="password" placeholder="Şifre" />
+    <button onclick="login()">Giriş</button>
+    <p id="message"></p>
+    <p class="switch-link">
+      Hesabınız yok mu? <a href="kayıt.html">Kayıt Ol</a>
+    </p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+    import { getDatabase, ref, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBX0PUaisTG-TvIOCCtKzSiI3e7yhLu3ik",
+      authDomain: "guzelailemchat.firebaseapp.com",
+      databaseURL: "https://guzelailemchat-default-rtdb.firebaseio.com",
+      projectId: "guzelailemchat",
+      storageBucket: "guzelailemchat.firebasestorage.app",
+      messagingSenderId: "353492004109",
+      appId: "1:353492004109:web:3a668422a563e6951cd444",
+      measurementId: "G-3CH1J0DLGZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    async function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const message = document.getElementById('message');
+      message.style.color = 'red';
+      message.textContent = '';
+
+      if (!username || !password) {
+        message.textContent = 'Lütfen kullanıcı adı ve şifre girin.';
+        return;
+      }
+
+      try {
+        // Kullanıcı adına göre sorgu yap
+        const usersRef = ref(db, 'users');
+        const q = query(usersRef, orderByChild('username'), equalTo(username));
+        const snapshot = await get(q);
+
+        if (snapshot.exists()) {
+          // Kullanıcı bulundu, email'i al
+          const userData = Object.values(snapshot.val())[0]; // İlk kullanıcı verisi
+          const email = userData.email;
+
+          // Email ile Firebase Auth giriş yap
+          await signInWithEmailAndPassword(auth, email, password);
+
+          // Başarılı ise index.html sayfasına yönlendir
+          window.location.href = 'chat.html';
+
+        } else {
+          message.textContent = 'Kullanıcı adı bulunamadı.';
+        }
+
+      } catch (error) {
+        if(error.code === 'auth/wrong-password'){
+          message.textContent = 'Şifre yanlış.';
+        } else {
+          message.textContent = error.message;
+        }
+      }
+    }
+
+    window.login = login;
+  </script>
+</body>
+</html>
